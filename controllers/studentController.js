@@ -107,11 +107,13 @@ async function addStudent(req, res) {
 // ===== GET LIST OF ALL STUDENTS =====
 // Includes plainPassword so the admin can always view credentials from the list.
 // Also flags students whose name is shared with another student, so the
-// frontend can display father's name alongside for disambiguation.
+// frontend can display father's name alongside for disambiguation, and
+// whether a fingerprint has been enrolled (without exposing the raw
+// credential data itself).
 async function getAllStudents(req, res) {
   try {
     const students = await Student.find()
-      .select('-password -fingerprintCredential -rememberToken -rememberTokenExpiry -faceDescriptor')
+      .select('-password -rememberToken -rememberTokenExpiry -faceDescriptor')
       .sort({ rollNo: 1 });
 
     const nameCounts = {};
@@ -122,9 +124,13 @@ async function getAllStudents(req, res) {
 
     const result = students.map((s) => {
       const key = s.name.trim().toLowerCase();
+      const obj = s.toObject();
+      const hasFingerprintEnrolled = !!obj.fingerprintCredential;
+      delete obj.fingerprintCredential;
       return {
-        ...s.toObject(),
-        hasDuplicateName: nameCounts[key] > 1
+        ...obj,
+        hasDuplicateName: nameCounts[key] > 1,
+        hasFingerprintEnrolled
       };
     });
 
@@ -138,11 +144,14 @@ async function getAllStudents(req, res) {
 async function getStudentById(req, res) {
   try {
     const student = await Student.findById(req.params.id)
-      .select('-password -fingerprintCredential -rememberToken -rememberTokenExpiry -faceDescriptor');
+      .select('-password -rememberToken -rememberTokenExpiry -faceDescriptor');
     if (!student) {
       return res.status(404).json({ message: 'Student not found.' });
     }
-    res.json(student);
+    const obj = student.toObject();
+    const hasFingerprintEnrolled = !!obj.fingerprintCredential;
+    delete obj.fingerprintCredential;
+    res.json({ ...obj, hasFingerprintEnrolled });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
