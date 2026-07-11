@@ -45,42 +45,6 @@ app.get('/', (req, res) => {
   res.json({ message: 'Attendance System API is running' });
 });
 
-// ===== TEMPORARY SETUP ROUTE =====
-// Creates the first admin account, for use on hosts (like Render's free tier)
-// that don't provide shell access to run setupAdmin.js directly.
-// Protected by requiring the JWT_SECRET as a query parameter, so only someone
-// who already has server access (via the Render dashboard's env vars) can
-// trigger it. REMOVE THIS ROUTE once the admin account has been created.
-app.get('/setup-admin', async (req, res) => {
-  try {
-    if (req.query.key !== process.env.JWT_SECRET) {
-      return res.status(403).json({ message: 'Not authorized.' });
-    }
-
-    const bcrypt = require('bcryptjs');
-    const Admin = require('./models/Admin');
-
-    const username = process.env.INITIAL_ADMIN_USERNAME || 'admin';
-    const password = process.env.INITIAL_ADMIN_PASSWORD || 'admin123';
-
-    const existing = await Admin.findOne({ username });
-    if (existing) {
-      return res.json({ message: 'Admin already exists. Nothing to do.', username });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await Admin.create({ username, password: hashedPassword });
-
-    res.json({
-      message: 'Admin account created successfully. Remove the /setup-admin route from server.js now.',
-      username,
-      password
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
